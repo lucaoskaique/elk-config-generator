@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ELK Config Generator & Tester</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/elkjs/0.9.3/elk.bundled.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.3/lib/elk.bundled.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700&display=swap');
 
@@ -43,12 +43,36 @@
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    height: 100vh;
     overflow: hidden;
   }
 
   .sidebar-header {
     padding: 16px;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sidebar-header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .lang-select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    padding: 3px 6px;
+    cursor: pointer;
+    outline: none;
+    text-transform: uppercase;
   }
 
   .sidebar-header h1 {
@@ -69,15 +93,20 @@
   .controls {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 12px;
+    padding-bottom: 16px;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-height: 0;
+    scroll-behavior: smooth;
   }
 
-  .controls::-webkit-scrollbar { width: 4px; }
-  .controls::-webkit-scrollbar-track { background: transparent; }
-  .controls::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .controls::-webkit-scrollbar { width: 8px; }
+  .controls::-webkit-scrollbar-track { background: var(--surface2); }
+  .controls::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 4px; }
+  .controls::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.5); }
 
   .section {
     background: var(--surface2);
@@ -149,8 +178,10 @@
 
   select:focus { border-color: var(--accent); }
 
-  .apply-btn, .import-btn {
-    margin: 12px;
+  .apply-btn, .import-btn, .export-btn {
+    width: 100%;
+    margin: 0;
+    margin-top: 12px;
     padding: 10px;
     background: var(--accent);
     color: #fff;
@@ -162,35 +193,26 @@
     cursor: pointer;
     letter-spacing: 0.05em;
     transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
   }
 
-  .apply-btn:hover, .import-btn:hover { background: #6fa3ff; }
-  .apply-btn:active, .import-btn:active { transform: scale(0.97); }
+  .apply-btn:hover, .import-btn:hover, .export-btn:hover { background: #6fa3ff; }
+  .apply-btn:active, .import-btn:active, .export-btn:active { transform: scale(0.97); }
 
   .import-btn {
     background: var(--accent3);
-    margin-top: 0;
+    margin-top: 20px;
   }
 
   .import-btn:hover { background: #d4a3f5; }
 
   .export-btn {
-    margin: 0 12px 12px 12px;
-    padding: 10px;
     background: var(--accent2);
     color: #0e0e12;
-    border: none;
-    border-radius: 6px;
-    font-family: 'Syne', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    letter-spacing: 0.05em;
-    transition: background 0.15s, transform 0.1s;
+    margin-bottom: 8px;
   }
 
   .export-btn:hover { background: #60dac6; }
-  .export-btn:active { transform: scale(0.97); }
 
   .edge-style-row {
     display: flex;
@@ -222,6 +244,11 @@
     width: 100%;
     height: 100%;
     overflow: visible;
+    cursor: grab;
+  }
+
+  svg.panning {
+    cursor: grabbing;
   }
 
   .edge-path {
@@ -527,21 +554,70 @@
   .error-message.visible {
     display: block;
   }
+
+  .zoom-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px;
+  }
+
+  .zoom-btn {
+    width: 32px;
+    height: 32px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .zoom-btn:hover {
+    background: var(--bg);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .zoom-level {
+    font-size: 9px;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 2px 0;
+  }
 </style>
 </head>
 <body>
 
 <div class="sidebar">
   <div class="sidebar-header">
-    <h1>ELK Config Generator</h1>
-    <p>Tune options, test, and export config</p>
+    <div class="sidebar-header-top">
+      <h1 data-i18n="app.title">ELK Config Generator</h1>
+      <select id="languageSelect" class="lang-select" aria-label="Language">
+        <option value="en">EN</option>
+        <option value="pt-BR">PT-BR</option>
+      </select>
+    </div>
+    <p data-i18n="app.subtitle">Tune options, test, and export config</p>
   </div>
 
   <div class="controls">
     <div class="section">
-      <div class="section-title">Algorithm</div>
+      <div class="section-title" data-i18n="section.algorithm">Algorithm</div>
       <div class="control-row">
-        <div class="control-label">Edge Routing</div>
+        <div class="control-label" data-i18n="label.edgeRouting">Edge Routing</div>
         <select id="edgeRouting">
           <option value="SPLINES">SPLINES</option>
           <option value="ORTHOGONAL" selected>ORTHOGONAL</option>
@@ -549,7 +625,7 @@
         </select>
       </div>
       <div class="control-row">
-        <div class="control-label">Node Placement</div>
+        <div class="control-label" data-i18n="label.nodePlacement">Node Placement</div>
         <select id="nodePlacement">
           <option value="BRANDES_KOEPF" selected>BRANDES_KOEPF</option>
           <option value="NETWORK_SIMPLEX">NETWORK_SIMPLEX</option>
@@ -558,7 +634,7 @@
         </select>
       </div>
       <div class="control-row">
-        <div class="control-label">BK Alignment</div>
+        <div class="control-label" data-i18n="label.bkAlignment">BK Alignment</div>
         <select id="bkAlign">
           <option value="BALANCED" selected>BALANCED</option>
           <option value="LEFT_UP">LEFT_UP</option>
@@ -567,14 +643,14 @@
         </select>
       </div>
       <div class="control-row">
-        <div class="control-label">Crossing Min</div>
+        <div class="control-label" data-i18n="label.crossingMin">Crossing Min</div>
         <select id="crossingMin">
           <option value="LAYER_SWEEP" selected>LAYER_SWEEP</option>
           <option value="INTERACTIVE">INTERACTIVE</option>
         </select>
       </div>
       <div class="control-row">
-        <div class="control-label">Direction</div>
+        <div class="control-label" data-i18n="label.direction">Direction</div>
         <select id="direction">
           <option value="RIGHT" selected>RIGHT</option>
           <option value="DOWN">DOWN</option>
@@ -585,89 +661,135 @@
     </div>
 
     <div class="section">
-      <div class="section-title">Spacing</div>
+      <div class="section-title" data-i18n="section.spacing">Spacing</div>
       <div class="control-row">
-        <div class="control-label">Node–Node<span>between layers</span></div>
+        <div class="control-label" data-i18n-html="label.layerSpacing">Node–Node<span>between layers</span></div>
         <input type="range" id="layerSpacing" min="80" max="400" value="200">
         <div class="control-value" id="layerSpacingVal">200</div>
       </div>
       <div class="control-row">
-        <div class="control-label">Node–Node<span>same layer</span></div>
+        <div class="control-label" data-i18n-html="label.nodeSpacing">Node–Node<span>same layer</span></div>
         <input type="range" id="nodeSpacing" min="40" max="300" value="120">
         <div class="control-value" id="nodeSpacingVal">120</div>
       </div>
       <div class="control-row">
-        <div class="control-label">Edge–Node</div>
+        <div class="control-label" data-i18n="label.edgeNodeSpacing">Edge–Node</div>
         <input type="range" id="edgeNodeSpacing" min="20" max="200" value="80">
         <div class="control-value" id="edgeNodeSpacingVal">80</div>
       </div>
       <div class="control-row">
-        <div class="control-label">Edge–Edge</div>
+        <div class="control-label" data-i18n="label.edgeEdgeSpacing">Edge–Edge</div>
         <input type="range" id="edgeEdgeSpacing" min="10" max="120" value="40">
         <div class="control-value" id="edgeEdgeSpacingVal">40</div>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-title">Visual</div>
+      <div class="section-title" data-i18n="section.visual">Visual</div>
       <div class="edge-style-row">
-        <div class="edge-style-label">Edge Opacity</div>
+        <div class="edge-style-label" data-i18n="label.edgeOpacity">Edge Opacity</div>
         <div class="edge-opacity-row">
           <input type="range" id="edgeOpacity" min="5" max="100" value="45" style="width:120px">
           <div class="control-value" id="edgeOpacityVal">45%</div>
         </div>
       </div>
       <div class="control-row">
-        <div class="control-label">Edge Width</div>
+        <div class="control-label" data-i18n="label.edgeWidth">Edge Width</div>
         <input type="range" id="edgeWidth" min="1" max="5" value="15" step="1">
         <div class="control-value" id="edgeWidthVal">1.5</div>
       </div>
       <div class="control-row">
-        <div class="control-label">Edge Color</div>
+        <div class="control-label" data-i18n="label.edgeColor">Edge Color</div>
         <select id="edgeColor">
-          <option value="150,150,160">Gray</option>
-          <option value="79,142,247">Blue</option>
-          <option value="78,201,176">Teal</option>
-          <option value="199,144,234">Purple</option>
+          <option value="255,255,255" data-i18n="color.white" selected>White</option>
+          <option value="150,150,160" data-i18n="color.gray">Gray</option>
+          <option value="79,142,247" data-i18n="color.blue">Blue</option>
+          <option value="78,201,176" data-i18n="color.teal">Teal</option>
+          <option value="199,144,234" data-i18n="color.purple">Purple</option>
         </select>
       </div>
     </div>
+
+    <div class="section">
+      <div class="section-title" data-i18n="section.advanced">Advanced</div>
+      <div class="control-row">
+        <div class="control-label" data-i18n-html="label.layeringStrategy">Layering Strategy<span>elk.layered.layering.strategy</span></div>
+        <select id="layeringStrategy">
+          <option value="NETWORK_SIMPLEX" selected>NETWORK_SIMPLEX</option>
+          <option value="LONGEST_PATH">LONGEST_PATH</option>
+          <option value="INTERACTIVE">INTERACTIVE</option>
+          <option value="COFFMAN_GRAHAM">COFFMAN_GRAHAM</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <div class="control-label" data-i18n-html="label.edgeStraightening">BK Edge Straightening<span>elk.layered.nodePlacement.bk.edgeStraightening</span></div>
+        <select id="edgeStraightening">
+          <option value="IMPROVE_STRAIGHTNESS" selected>IMPROVE_STRAIGHTNESS</option>
+          <option value="NONE">NONE</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <div class="control-label" data-i18n-html="label.favorStraightEdges">Favor Straight Edges<span>elk.layered.nodePlacement.favorStraightEdges</span></div>
+        <input type="checkbox" id="favorStraightEdges" style="cursor:pointer">
+      </div>
+      <div class="control-row">
+        <div class="control-label" data-i18n-html="label.mergeEdges">Merge Edges<span>elk.layered.mergeEdges</span></div>
+        <input type="checkbox" id="mergeEdges" style="cursor:pointer">
+      </div>
+      <div class="control-row">
+        <div class="control-label" data-i18n-html="label.separateComponents">Separate Components<span>elk.separateConnectedComponents</span></div>
+        <input type="checkbox" id="separateConnectedComponents" checked style="cursor:pointer">
+      </div>
+      <div class="control-row">
+        <div class="control-label" data-i18n-html="label.thoroughness">Thoroughness<span>elk.layered.thoroughness</span></div>
+        <input type="range" id="thoroughness" min="1" max="20" value="10">
+        <div class="control-value" id="thoroughnessVal">10</div>
+      </div>
+    </div>
+
+    <button class="import-btn" onclick="openImportModal()"><span data-i18n="button.loadJson">⬆ Load Graph JSON</span></button>
+    <button class="apply-btn" id="applyBtn" onclick="runLayout()"><span data-i18n="button.apply">▶ Apply Layout</span></button>
+    <button class="export-btn" onclick="openExportModal()"><span data-i18n="button.export">↓ Export Config</span></button>
   </div>
 
-  <button class="import-btn" onclick="openImportModal()">⬆ Load Graph JSON</button>
-  <button class="apply-btn" onclick="runLayout()">▶ Apply Layout</button>
-  <button class="export-btn" onclick="openExportModal()">↓ Export Config</button>
 </div>
 
 <div class="canvas-area" id="canvas">
   <svg id="svg">
     <defs>
       <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-        <path d="M0,0 L0,6 L6,3 z" fill="rgba(150,150,160,0.5)"/>
+        <path d="M0,0 L0,6 L6,3 z" fill="rgba(255,255,255,0.45)"/>
       </marker>
     </defs>
     <g id="graph-root"></g>
   </svg>
-  <div class="loading" id="loading" style="display:none">
-    <div class="spinner"></div> Computing layout…
+  <div class="zoom-controls">
+    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In" data-i18n-title="zoom.in">+</button>
+    <div class="zoom-level" id="zoomLevel">100%</div>
+    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out" data-i18n-title="zoom.out">−</button>
+    <button class="zoom-btn" onclick="resetZoom()" title="Reset View" data-i18n-title="zoom.reset">⌖</button>
   </div>
-  <div class="status-bar" id="status">Ready</div>
+  <div class="loading" id="loading" style="display:none">
+    <div class="spinner"></div> <span data-i18n="status.computing">Computing layout…</span>
+  </div>
+  <div class="status-bar" id="status" data-i18n="status.ready">Ready</div>
 </div>
 
 <!-- Import Modal -->
 <div class="modal-overlay" id="importModal">
   <div class="modal">
     <div class="modal-header">
-      <h2>Load Graph JSON</h2>
+      <h2 data-i18n="import.title">Load Graph JSON</h2>
       <button class="modal-close" onclick="closeImportModal()">×</button>
     </div>
     <div class="modal-content">
-      <div class="format-hint">
+      <div class="format-hint" data-i18n="import.hint">
         Paste your graph JSON here. Supports nodes in "children" array and edges with "sources" and "targets" arrays. Existing layoutOptions will be merged with the UI controls.
       </div>
       <textarea 
         id="importTextarea" 
         class="import-textarea" 
+        data-i18n-placeholder="import.placeholder"
         placeholder='Paste JSON like:
 {
   "id": "root",
@@ -677,8 +799,8 @@
 }'></textarea>
       <div class="error-message" id="importError"></div>
       <div class="import-actions">
-        <button class="btn-cancel" onclick="closeImportModal()">Cancel</button>
-        <button class="btn-load" onclick="loadGraphJSON()">Load Graph</button>
+        <button class="btn-cancel" onclick="closeImportModal()" data-i18n="button.cancel">Cancel</button>
+        <button class="btn-load" onclick="loadGraphJSON()" data-i18n="button.load">Load Graph</button>
       </div>
     </div>
   </div>
@@ -688,7 +810,7 @@
 <div class="modal-overlay" id="exportModal">
   <div class="modal">
     <div class="modal-header">
-      <h2>Export Configuration</h2>
+      <h2 data-i18n="export.title">Export Configuration</h2>
       <button class="modal-close" onclick="closeExportModal()">×</button>
     </div>
     <div class="modal-tabs">
@@ -699,33 +821,33 @@
     <div class="modal-content">
       <!-- JSON Tab -->
       <div class="tab-content active" id="json-tab">
-        <div class="format-hint">
+        <div class="format-hint" data-i18n="export.hint.json">
           Pure JSON format — ready to use with ELK's layout() method
         </div>
         <div style="position: relative;">
-          <button class="copy-btn" onclick="copyToClipboard('json-code', this)">Copy</button>
+          <button class="copy-btn" onclick="copyToClipboard('json-code', this)" data-i18n="button.copy">Copy</button>
           <div class="code-block" id="json-code"></div>
         </div>
       </div>
 
       <!-- JavaScript Tab -->
       <div class="tab-content" id="javascript-tab">
-        <div class="format-hint">
+        <div class="format-hint" data-i18n="export.hint.js">
           JavaScript object — import and use in your app
         </div>
         <div style="position: relative;">
-          <button class="copy-btn" onclick="copyToClipboard('js-code', this)">Copy</button>
+          <button class="copy-btn" onclick="copyToClipboard('js-code', this)" data-i18n="button.copy">Copy</button>
           <div class="code-block" id="js-code"></div>
         </div>
       </div>
 
       <!-- TypeScript Tab -->
       <div class="tab-content" id="typescript-tab">
-        <div class="format-hint">
+        <div class="format-hint" data-i18n="export.hint.ts">
           TypeScript with ELK types — fully typed configuration
         </div>
         <div style="position: relative;">
-          <button class="copy-btn" onclick="copyToClipboard('ts-code', this)">Copy</button>
+          <button class="copy-btn" onclick="copyToClipboard('ts-code', this)" data-i18n="button.copy">Copy</button>
           <div class="code-block" id="ts-code"></div>
         </div>
       </div>
@@ -737,6 +859,159 @@
 // ── Current loaded graph ──────────────────────────────────────────────────────
 let CURRENT_GRAPH = null;
 let RAW_IMPORTED_DATA = null;
+
+// ── Internationalization ─────────────────────────────────────────────────────
+const I18N = {
+  en: {
+    'app.title': 'ELK Config Generator',
+    'app.subtitle': 'Tune options, test, and export config',
+    'section.algorithm': 'Algorithm',
+    'section.spacing': 'Spacing',
+    'section.visual': 'Visual',
+    'section.advanced': 'Advanced',
+    'label.edgeRouting': 'Edge Routing',
+    'label.nodePlacement': 'Node Placement',
+    'label.bkAlignment': 'BK Alignment',
+    'label.crossingMin': 'Crossing Min',
+    'label.direction': 'Direction',
+    'label.layerSpacing': 'Node–Node<span>between layers</span>',
+    'label.nodeSpacing': 'Node–Node<span>same layer</span>',
+    'label.edgeNodeSpacing': 'Edge–Node',
+    'label.edgeEdgeSpacing': 'Edge–Edge',
+    'label.edgeOpacity': 'Edge Opacity',
+    'label.edgeWidth': 'Edge Width',
+    'label.edgeColor': 'Edge Color',
+    'color.white': 'White',
+    'label.layeringStrategy': 'Layering Strategy<span>elk.layered.layering.strategy</span>',
+    'label.edgeStraightening': 'BK Edge Straightening<span>elk.layered.nodePlacement.bk.edgeStraightening</span>',
+    'label.favorStraightEdges': 'Favor Straight Edges<span>elk.layered.nodePlacement.favorStraightEdges</span>',
+    'label.mergeEdges': 'Merge Edges<span>elk.layered.mergeEdges</span>',
+    'label.separateComponents': 'Separate Components<span>elk.separateConnectedComponents</span>',
+    'label.thoroughness': 'Thoroughness<span>elk.layered.thoroughness</span>',
+    'button.loadJson': '⬆ Load Graph JSON',
+    'button.apply': '▶ Apply Layout',
+    'button.export': '↓ Export Config',
+    'button.cancel': 'Cancel',
+    'button.load': 'Load Graph',
+    'button.copy': 'Copy',
+    'button.copied': 'Copied!',
+    'button.copyError': 'Error',
+    'import.title': 'Load Graph JSON',
+    'import.hint': 'Paste your graph JSON here. Supports nodes in "children" array and edges with "sources" and "targets" arrays. Existing layoutOptions will be merged with the UI controls.',
+    'import.placeholder': 'Paste JSON like:\n{\n  "id": "root",\n  "layoutOptions": { ... },\n  "children": [ ... ],\n  "edges": [ ... ]\n}',
+    'export.title': 'Export Configuration',
+    'export.hint.json': 'Pure JSON format — ready to use with ELK\'s layout() method',
+    'export.hint.js': 'JavaScript object — import and use in your app',
+    'export.hint.ts': 'TypeScript with ELK types — fully typed configuration',
+    'color.gray': 'Gray',
+    'color.blue': 'Blue',
+    'color.teal': 'Teal',
+    'color.purple': 'Purple',
+    'zoom.in': 'Zoom In',
+    'zoom.out': 'Zoom Out',
+    'zoom.reset': 'Reset View',
+    'status.ready': 'Ready',
+    'status.computing': 'Computing layout…',
+    'status.layoutDone': 'Layout done',
+    'status.layoutError': 'Layout error',
+    'status.loadedGraph': 'Loaded graph',
+    'unit.nodes': 'nodes',
+    'unit.edges': 'edges',
+    'import.error.empty': 'Please paste JSON data',
+    'import.error.children': 'JSON must have a "children" array with nodes',
+    'import.error.edges': 'JSON must have an "edges" array',
+    'import.error.invalid': 'Invalid JSON'
+  },
+  'pt-BR': {
+    'app.title': 'Gerador de Config ELK',
+    'app.subtitle': 'Ajuste opções, teste e exporte a config',
+    'section.algorithm': 'Algoritmo',
+    'section.spacing': 'Espaçamento',
+    'section.visual': 'Visual',
+    'section.advanced': 'Avançado',
+    'label.edgeRouting': 'Roteamento de Arestas',
+    'label.nodePlacement': 'Posicionamento de Nós',
+    'label.bkAlignment': 'Alinhamento BK',
+    'label.crossingMin': 'Min. Cruzamentos',
+    'label.direction': 'Direção',
+    'label.layerSpacing': 'Nó–Nó<span>entre camadas</span>',
+    'label.nodeSpacing': 'Nó–Nó<span>mesma camada</span>',
+    'label.edgeNodeSpacing': 'Aresta–Nó',
+    'label.edgeEdgeSpacing': 'Aresta–Aresta',
+    'label.edgeOpacity': 'Opacidade da Aresta',
+    'label.edgeWidth': 'Largura da Aresta',
+    'label.edgeColor': 'Cor da Aresta',
+    'color.white': 'Branco',
+    'label.layeringStrategy': 'Estratégia de Camadas<span>elk.layered.layering.strategy</span>',
+    'label.edgeStraightening': 'Retificação BK de Arestas<span>elk.layered.nodePlacement.bk.edgeStraightening</span>',
+    'label.favorStraightEdges': 'Priorizar Arestas Retas<span>elk.layered.nodePlacement.favorStraightEdges</span>',
+    'label.mergeEdges': 'Mesclar Arestas<span>elk.layered.mergeEdges</span>',
+    'label.separateComponents': 'Separar Componentes<span>elk.separateConnectedComponents</span>',
+    'label.thoroughness': 'Minuciosidade<span>elk.layered.thoroughness</span>',
+    'button.loadJson': '⬆ Carregar JSON do Grafo',
+    'button.apply': '▶ Aplicar Layout',
+    'button.export': '↓ Exportar Config',
+    'button.cancel': 'Cancelar',
+    'button.load': 'Carregar Grafo',
+    'button.copy': 'Copiar',
+    'button.copied': 'Copiado!',
+    'button.copyError': 'Erro',
+    'import.title': 'Carregar JSON do Grafo',
+    'import.hint': 'Cole o JSON do grafo aqui. Suporta nós em "children" e arestas com "sources" e "targets". layoutOptions existente será mesclado com os controles.',
+    'import.placeholder': 'Cole um JSON assim:\n{\n  "id": "root",\n  "layoutOptions": { ... },\n  "children": [ ... ],\n  "edges": [ ... ]\n}',
+    'export.title': 'Exportar Configuração',
+    'export.hint.json': 'Formato JSON puro — pronto para usar com o metodo layout() do ELK',
+    'export.hint.js': 'Objeto JavaScript — importe e use no seu app',
+    'export.hint.ts': 'TypeScript com tipos do ELK — configuração tipada',
+    'color.gray': 'Cinza',
+    'color.blue': 'Azul',
+    'color.teal': 'Verde-água',
+    'color.purple': 'Roxo',
+    'zoom.in': 'Aproximar',
+    'zoom.out': 'Afastar',
+    'zoom.reset': 'Reiniciar Visão',
+    'status.ready': 'Pronto',
+    'status.computing': 'Calculando layout…',
+    'status.layoutDone': 'Layout concluído',
+    'status.layoutError': 'Erro de layout',
+    'status.loadedGraph': 'Grafo carregado',
+    'unit.nodes': 'nós',
+    'unit.edges': 'arestas',
+    'import.error.empty': 'Cole um JSON',
+    'import.error.children': 'JSON precisa de "children" com nós',
+    'import.error.edges': 'JSON precisa de "edges"',
+    'import.error.invalid': 'JSON inválido'
+  }
+};
+
+let currentLang = 'en';
+
+function t(key) {
+  const dict = I18N[currentLang] || I18N.en;
+  return dict[key] || I18N.en[key] || key;
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    el.innerHTML = t(el.getAttribute('data-i18n-html'));
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.setAttribute('placeholder', t(el.getAttribute('data-i18n-placeholder')));
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.setAttribute('title', t(el.getAttribute('data-i18n-title')));
+  });
+}
+
+function setLanguage(lang) {
+  currentLang = I18N[lang] ? lang : 'en';
+  localStorage.setItem('elk_lang', currentLang);
+  applyTranslations();
+  document.getElementById('status').textContent = t('status.ready');
+}
 
 // ── Graph data — complex multi-pipeline topology ──────────────────────────────
 const BL = '#2d5a8e', BLT = '#a8d4ff', GR = '#1a3a1a', GRT = '#4ec9b0';
@@ -928,24 +1203,63 @@ function estimateNodeSize(node) {
   return { w: Math.min(w, 260), h };
 }
 
+// ── Auto-apply debounce ───────────────────────────────────────────────────────
+let layoutDebounceTimer = null;
+
+function scheduleLayoutUpdate() {
+  // Clear existing timer
+  if (layoutDebounceTimer) {
+    clearTimeout(layoutDebounceTimer);
+  }
+  
+  // Schedule new layout after 500ms of no changes
+  layoutDebounceTimer = setTimeout(() => {
+    runLayout();
+  }, 500);
+}
+
 // ── Slider live values ────────────────────────────────────────────────────────
-function bindSlider(id, displayId, transform) {
+function bindSlider(id, displayId, transform, affectsLayout = false) {
   const el = document.getElementById(id);
   const disp = document.getElementById(displayId);
   el.addEventListener('input', () => {
     disp.textContent = transform ? transform(el.value) : el.value;
-    applyEdgeStyle();
+    
+    if (affectsLayout) {
+      scheduleLayoutUpdate();
+    } else {
+      applyEdgeStyle();
+    }
   });
 }
 
-bindSlider('layerSpacing', 'layerSpacingVal');
-bindSlider('nodeSpacing', 'nodeSpacingVal');
-bindSlider('edgeNodeSpacing', 'edgeNodeSpacingVal');
-bindSlider('edgeEdgeSpacing', 'edgeEdgeSpacingVal');
-bindSlider('edgeOpacity', 'edgeOpacityVal', v => v + '%');
-bindSlider('edgeWidth', 'edgeWidthVal', v => (v / 10).toFixed(1));
+// Layout-affecting sliders
+bindSlider('layerSpacing', 'layerSpacingVal', null, true);
+bindSlider('nodeSpacing', 'nodeSpacingVal', null, true);
+bindSlider('edgeNodeSpacing', 'edgeNodeSpacingVal', null, true);
+bindSlider('edgeEdgeSpacing', 'edgeEdgeSpacingVal', null, true);
+bindSlider('thoroughness', 'thoroughnessVal', null, true);
+
+// Visual-only sliders
+bindSlider('edgeOpacity', 'edgeOpacityVal', v => v + '%', false);
+bindSlider('edgeWidth', 'edgeWidthVal', v => (v / 10).toFixed(1), false);
 
 document.getElementById('edgeColor').addEventListener('change', applyEdgeStyle);
+
+// Listen to algorithm dropdown changes
+['edgeRouting', 'nodePlacement', 'bkAlign', 'crossingMin', 'direction', 'layeringStrategy', 'edgeStraightening'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('change', () => scheduleLayoutUpdate());
+  }
+});
+
+['favorStraightEdges', 'mergeEdges', 'separateConnectedComponents'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) {
+    el.addEventListener('change', () => scheduleLayoutUpdate());
+  }
+});
 
 function applyEdgeStyle() {
   const opacity = document.getElementById('edgeOpacity').value / 100;
@@ -966,15 +1280,20 @@ function getCurrentElkOptions() {
     'elk.algorithm': 'layered',
     'elk.direction': document.getElementById('direction').value,
     'elk.edgeRouting': document.getElementById('edgeRouting').value,
+    'elk.layered.layering.strategy': document.getElementById('layeringStrategy').value,
     'elk.spacing.nodeNode': document.getElementById('nodeSpacing').value,
     'elk.spacing.edgeNode': document.getElementById('edgeNodeSpacing').value,
     'elk.spacing.edgeEdge': document.getElementById('edgeEdgeSpacing').value,
     'elk.layered.spacing.nodeNodeBetweenLayers': document.getElementById('layerSpacing').value,
     'elk.layered.nodePlacement.strategy': document.getElementById('nodePlacement').value,
     'elk.layered.nodePlacement.bk.fixedAlignment': document.getElementById('bkAlign').value,
+    'elk.layered.nodePlacement.bk.edgeStraightening': document.getElementById('edgeStraightening').value,
+    'elk.layered.nodePlacement.favorStraightEdges': document.getElementById('favorStraightEdges').checked ? 'true' : 'false',
+    'elk.layered.mergeEdges': document.getElementById('mergeEdges').checked ? 'true' : 'false',
+    'elk.separateConnectedComponents': document.getElementById('separateConnectedComponents').checked ? 'true' : 'false',
     'elk.layered.crossingMinimization.strategy': document.getElementById('crossingMin').value,
     'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
-    'elk.layered.thoroughness': '10',
+    'elk.layered.thoroughness': document.getElementById('thoroughness').value,
     'elk.portConstraints': 'FIXED_SIDE',
     'elk.portAlignment.default': 'CENTER',
     'elk.padding': '[top=30, left=30, bottom=30, right=30]',
@@ -1063,7 +1382,7 @@ function loadGraphJSON() {
   const text = textarea.value.trim();
 
   if (!text) {
-    showImportError('Please paste JSON data');
+    showImportError(t('import.error.empty'));
     return;
   }
 
@@ -1072,12 +1391,12 @@ function loadGraphJSON() {
     
     // Validate structure
     if (!data.children || !Array.isArray(data.children)) {
-      showImportError('JSON must have a "children" array with nodes');
+      showImportError(t('import.error.children'));
       return;
     }
 
     if (!data.edges || !Array.isArray(data.edges)) {
-      showImportError('JSON must have an "edges" array');
+      showImportError(t('import.error.edges'));
       return;
     }
 
@@ -1098,10 +1417,10 @@ function loadGraphJSON() {
     runLayout();
     
     const status = document.getElementById('status');
-    status.textContent = `Loaded graph: ${CURRENT_GRAPH.nodes.length} nodes, ${CURRENT_GRAPH.edges.length} edges`;
+    status.textContent = `${t('status.loadedGraph')}: ${CURRENT_GRAPH.nodes.length} ${t('unit.nodes')}, ${CURRENT_GRAPH.edges.length} ${t('unit.edges')}`;
 
   } catch (err) {
-    showImportError('Invalid JSON: ' + err.message);
+    showImportError(t('import.error.invalid') + ': ' + err.message);
     console.error('Import error:', err);
   }
 }
@@ -1118,13 +1437,23 @@ function applyLayoutOptionsToUI(layoutOptions) {
     'elk.layered.nodePlacement.strategy': 'nodePlacement',
     'elk.layered.nodePlacement.bk.fixedAlignment': 'bkAlign',
     'elk.layered.crossingMinimization.strategy': 'crossingMin',
+    'elk.layered.layering.strategy': 'layeringStrategy',
+    'elk.layered.nodePlacement.bk.edgeStraightening': 'edgeStraightening',
+    'elk.layered.nodePlacement.favorStraightEdges': 'favorStraightEdges',
+    'elk.layered.mergeEdges': 'mergeEdges',
+    'elk.separateConnectedComponents': 'separateConnectedComponents',
+    'elk.layered.thoroughness': 'thoroughness',
   };
 
   Object.entries(mapping).forEach(([optionKey, controlId]) => {
-    if (layoutOptions[optionKey]) {
+    if (layoutOptions[optionKey] !== undefined) {
       const el = document.getElementById(controlId);
       if (el) {
-        el.value = layoutOptions[optionKey];
+        if (el.type === 'checkbox') {
+          el.checked = String(layoutOptions[optionKey]) === 'true';
+        } else {
+          el.value = layoutOptions[optionKey];
+        }
         
         // Update display value for range inputs
         const displayId = controlId + 'Val';
@@ -1148,7 +1477,7 @@ async function runLayout() {
   const loading = document.getElementById('loading');
   const status = document.getElementById('status');
   loading.style.display = 'flex';
-  status.textContent = 'Computing…';
+  status.textContent = t('status.computing');
 
   const options = getCurrentElkOptions();
 
@@ -1167,9 +1496,9 @@ async function runLayout() {
   try {
     const result = await elk.layout(graph);
     renderGraph(result);
-    status.textContent = `Layout done · ${CURRENT_GRAPH.nodes.length} nodes · ${CURRENT_GRAPH.edges.length} edges · ${options['elk.edgeRouting']}`;
+    status.textContent = `${t('status.layoutDone')} · ${CURRENT_GRAPH.nodes.length} ${t('unit.nodes')} · ${CURRENT_GRAPH.edges.length} ${t('unit.edges')} · ${options['elk.edgeRouting']}`;
   } catch(err) {
-    status.textContent = 'Layout error: ' + err.message;
+    status.textContent = `${t('status.layoutError')}: ${err.message}`;
     console.error(err);
   } finally {
     loading.style.display = 'none';
@@ -1357,8 +1686,19 @@ function renderGraph(layoutResult) {
   fitToView(layoutResult);
 }
 
+// ── Zoom & Pan State ──────────────────────────────────────────────────────────
+let viewState = {
+  scale: 1,
+  translateX: 0,
+  translateY: 0,
+  layoutWidth: 800,
+  layoutHeight: 600
+};
+
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+
 function fitToView(layoutResult) {
-  const svg = document.getElementById('svg');
   const canvas = document.getElementById('canvas');
   const W = canvas.clientWidth;
   const H = canvas.clientHeight;
@@ -1367,14 +1707,131 @@ function fitToView(layoutResult) {
   const gh = layoutResult.height || 600;
   const pad = 40;
 
+  // Store layout dimensions
+  viewState.layoutWidth = gw;
+  viewState.layoutHeight = gh;
+
+  // Calculate scale to fit
   const scale = Math.min((W - pad*2) / gw, (H - pad*2) / gh, 1.5);
   const tx = (W - gw * scale) / 2;
   const ty = (H - gh * scale) / 2;
 
-  document.getElementById('graph-root').setAttribute(
-    'transform', `translate(${tx}, ${ty}) scale(${scale})`
-  );
+  // Update view state
+  viewState.scale = scale;
+  viewState.translateX = tx;
+  viewState.translateY = ty;
+
+  applyTransform();
 }
+
+function applyTransform() {
+  const root = document.getElementById('graph-root');
+  root.setAttribute(
+    'transform', 
+    `translate(${viewState.translateX}, ${viewState.translateY}) scale(${viewState.scale})`
+  );
+  
+  // Update zoom level display
+  const zoomPercent = Math.round(viewState.scale * 100);
+  document.getElementById('zoomLevel').textContent = `${zoomPercent}%`;
+}
+
+function zoomIn() {
+  const canvas = document.getElementById('canvas');
+  const W = canvas.clientWidth;
+  const H = canvas.clientHeight;
+  const centerX = W / 2;
+  const centerY = H / 2;
+  
+  zoom(1.2, centerX, centerY);
+}
+
+function zoomOut() {
+  const canvas = document.getElementById('canvas');
+  const W = canvas.clientWidth;
+  const H = canvas.clientHeight;
+  const centerX = W / 2;
+  const centerY = H / 2;
+  
+  zoom(0.8, centerX, centerY);
+}
+
+function zoom(factor, centerX, centerY) {
+  const oldScale = viewState.scale;
+  const newScale = Math.max(0.1, Math.min(5, oldScale * factor));
+  
+  // Zoom towards the center point
+  const scaleDiff = newScale - oldScale;
+  viewState.translateX -= (centerX - viewState.translateX) * scaleDiff / oldScale;
+  viewState.translateY -= (centerY - viewState.translateY) * scaleDiff / oldScale;
+  viewState.scale = newScale;
+  
+  applyTransform();
+}
+
+function resetZoom() {
+  const canvas = document.getElementById('canvas');
+  const W = canvas.clientWidth;
+  const H = canvas.clientHeight;
+  const pad = 40;
+
+  const scale = Math.min((W - pad*2) / viewState.layoutWidth, (H - pad*2) / viewState.layoutHeight, 1.5);
+  const tx = (W - viewState.layoutWidth * scale) / 2;
+  const ty = (H - viewState.layoutHeight * scale) / 2;
+
+  viewState.scale = scale;
+  viewState.translateX = tx;
+  viewState.translateY = ty;
+
+  applyTransform();
+}
+
+// ── Pan handlers ──────────────────────────────────────────────────────────────
+function setupPanHandlers() {
+  const svg = document.getElementById('svg');
+
+  svg.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return; // Only left mouse button
+    isPanning = true;
+    panStart = { x: e.clientX, y: e.clientY };
+    svg.classList.add('panning');
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isPanning) return;
+    
+    const dx = e.clientX - panStart.x;
+    const dy = e.clientY - panStart.y;
+    
+    viewState.translateX += dx;
+    viewState.translateY += dy;
+    
+    panStart = { x: e.clientX, y: e.clientY };
+    applyTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isPanning) {
+      isPanning = false;
+      svg.classList.remove('panning');
+    }
+  });
+
+  // Mouse wheel zoom
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    
+    const rect = svg.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    zoom(factor, mouseX, mouseY);
+  });
+}
+
+// Initialize pan handlers once
+setupPanHandlers();
 
 // ── Export Modal ──────────────────────────────────────────────────────────────
 function openExportModal() {
@@ -1456,18 +1913,18 @@ async function copyToClipboard(elementId, button) {
   
   try {
     await navigator.clipboard.writeText(code);
-    button.textContent = 'Copied!';
+    button.textContent = t('button.copied');
     button.classList.add('copied');
     
     setTimeout(() => {
-      button.textContent = 'Copy';
+      button.textContent = t('button.copy');
       button.classList.remove('copied');
     }, 2000);
   } catch (err) {
     console.error('Failed to copy:', err);
-    button.textContent = 'Error';
+    button.textContent = t('button.copyError');
     setTimeout(() => {
-      button.textContent = 'Copy';
+      button.textContent = t('button.copy');
     }, 2000);
   }
 }
@@ -1494,6 +1951,17 @@ document.getElementById('importModal').addEventListener('click', (e) => {
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
+const storedLang = localStorage.getItem('elk_lang');
+const browserLang = (navigator.language || '').toLowerCase();
+const initialLang = storedLang || (browserLang.startsWith('pt') ? 'pt-BR' : 'en');
+setLanguage(initialLang);
+
+const langSelect = document.getElementById('languageSelect');
+if (langSelect) {
+  langSelect.value = currentLang;
+  langSelect.addEventListener('change', () => setLanguage(langSelect.value));
+}
+
 runLayout();
 </script>
 </body>
