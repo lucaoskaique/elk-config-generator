@@ -2,6 +2,8 @@
 
 A web-based tool for testing and generating [ELK (Eclipse Layout Kernel)](https://www.eclipse.org/elk/) layout configurations. Visually adjust layout parameters, test with your own graph data, and export configurations for use in any project.
 
+**🚀 Live Demo**: https://lucaoskaique.github.io/elk-config-generator/
+
 ## Features
 
 - **Import Graph JSON**: Paste your graph structure (nodes and edges) to visualize and test layouts
