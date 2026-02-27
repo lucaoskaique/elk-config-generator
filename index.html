@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELK Config Generator & Tester</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/elkjs/0.9.3/elk.bundled.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #16161c;
+    --surface2: #1e1e28;
+    --border: rgba(255,255,255,0.07);
+    --text: #c9ccd6;
+    --text-dim: #555870;
+    --accent: #4f8ef7;
+    --accent2: #4ec9b0;
+    --accent3: #c792ea;
+    --danger: #f97583;
+    --success: #4ec9b0;
+    --node-bg: #1a1a24;
+    --node-border: rgba(255,255,255,0.1);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-header h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .sidebar-header p {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .controls {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .controls::-webkit-scrollbar { width: 4px; }
+  .controls::-webkit-scrollbar-track { background: transparent; }
+  .controls::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .section {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .section-title {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+
+  .control-row:last-child { border-bottom: none; }
+
+  .control-label {
+    font-size: 10px;
+    color: var(--text);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .control-label span {
+    display: block;
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+
+  .control-value {
+    font-size: 10px;
+    color: var(--accent2);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    width: 80px;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 6px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  .apply-btn, .import-btn {
+    margin: 12px;
+    padding: 10px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .apply-btn:hover, .import-btn:hover { background: #6fa3ff; }
+  .apply-btn:active, .import-btn:active { transform: scale(0.97); }
+
+  .import-btn {
+    background: var(--accent3);
+    margin-top: 0;
+  }
+
+  .import-btn:hover { background: #d4a3f5; }
+
+  .export-btn {
+    margin: 0 12px 12px 12px;
+    padding: 10px;
+    background: var(--accent2);
+    color: #0e0e12;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: background 0.15s, transform 0.1s;
+  }
+
+  .export-btn:hover { background: #60dac6; }
+  .export-btn:active { transform: scale(0.97); }
+
+  .edge-style-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 10px;
+  }
+
+  .edge-style-label { font-size: 9px; color: var(--text-dim); letter-spacing: 0.1em; text-transform: uppercase; }
+
+  .edge-opacity-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* CANVAS */
+  .canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .edge-path {
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke 0.2s, stroke-width 0.2s;
+  }
+
+  .edge-path:hover {
+    stroke: var(--accent) !important;
+    stroke-width: 2.5 !important;
+    opacity: 1 !important;
+  }
+
+  .node-group { cursor: default; }
+
+  .node-rect {
+    rx: 7;
+    ry: 7;
+    fill: var(--node-bg);
+    stroke: var(--node-border);
+    stroke-width: 1;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.5));
+  }
+
+  .node-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    fill: #e0e0e0;
+  }
+
+  .node-type {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    fill: var(--text-dim);
+  }
+
+  .node-pill-bg {
+    rx: 99;
+    ry: 99;
+  }
+
+  .node-pill-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    dominant-baseline: middle;
+  }
+
+  .status-bar {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    font-size: 10px;
+    color: var(--text-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(14,14,18,0.8);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    margin-right: 10px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 700px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+  }
+
+  .modal-close:hover { color: var(--text); }
+
+  .modal-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 12px 20px 0 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .modal-tab {
+    padding: 8px 16px;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+
+  .modal-tab:hover { color: var(--text); }
+  .modal-tab.active { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+  .modal-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  .modal-content::-webkit-scrollbar { width: 6px; }
+  .modal-content::-webkit-scrollbar-track { background: transparent; }
+  .modal-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre;
+    position: relative;
+  }
+
+  .code-block::-webkit-scrollbar { height: 6px; }
+  .code-block::-webkit-scrollbar-track { background: transparent; }
+  .code-block::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .copy-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    padding: 6px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .copy-btn:hover { background: var(--surface); border-color: var(--accent2); }
+  .copy-btn.copied { background: var(--success); color: #0e0e12; border-color: var(--success); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .format-hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border-left: 3px solid var(--accent2);
+    border-radius: 4px;
+  }
+
+  /* Import Modal */
+  .import-textarea {
+    width: 100%;
+    min-height: 400px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+  }
+
+  .import-textarea:focus {
+    border-color: var(--accent3);
+  }
+
+  .import-textarea::placeholder {
+    color: var(--text-dim);
+  }
+
+  .import-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    justify-content: flex-end;
+  }
+
+  .import-actions button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-family: 'Syne', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  .import-actions .btn-cancel {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .import-actions .btn-cancel:hover {
+    background: var(--bg);
+  }
+
+  .import-actions .btn-load {
+    background: var(--accent3);
+    color: #fff;
+  }
+
+  .import-actions .btn-load:hover {
+    background: #d4a3f5;
+  }
+
+  .error-message {
+    color: var(--danger);
+    font-size: 10px;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(249, 117, 131, 0.1);
+    border-left: 3px solid var(--danger);
+    border-radius: 4px;
+    display: none;
+  }
+
+  .error-message.visible {
+    display: block;
+  }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-header">
+    <h1>ELK Config Generator</h1>
+    <p>Tune options, test, and export config</p>
+  </div>
+
+  <div class="controls">
+    <div class="section">
+      <div class="section-title">Algorithm</div>
+      <div class="control-row">
+        <div class="control-label">Edge Routing</div>
+        <select id="edgeRouting">
+          <option value="SPLINES">SPLINES</option>
+          <option value="ORTHOGONAL" selected>ORTHOGONAL</option>
+          <option value="POLYLINE">POLYLINE</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Node Placement</div>
+        <select id="nodePlacement">
+          <option value="BRANDES_KOEPF" selected>BRANDES_KOEPF</option>
+          <option value="NETWORK_SIMPLEX">NETWORK_SIMPLEX</option>
+          <option value="SIMPLE">SIMPLE</option>
+          <option value="LINEAR_SEGMENTS">LINEAR_SEGMENTS</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <div class="control-label">BK Alignment</div>
+        <select id="bkAlign">
+          <option value="BALANCED" selected>BALANCED</option>
+          <option value="LEFT_UP">LEFT_UP</option>
+          <option value="RIGHT_UP">RIGHT_UP</option>
+          <option value="LEFT_DOWN">LEFT_DOWN</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Crossing Min</div>
+        <select id="crossingMin">
+          <option value="LAYER_SWEEP" selected>LAYER_SWEEP</option>
+          <option value="INTERACTIVE">INTERACTIVE</option>
+        </select>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Direction</div>
+        <select id="direction">
+          <option value="RIGHT" selected>RIGHT</option>
+          <option value="DOWN">DOWN</option>
+          <option value="LEFT">LEFT</option>
+          <option value="UP">UP</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Spacing</div>
+      <div class="control-row">
+        <div class="control-label">Node–Node<span>between layers</span></div>
+        <input type="range" id="layerSpacing" min="80" max="400" value="200">
+        <div class="control-value" id="layerSpacingVal">200</div>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Node–Node<span>same layer</span></div>
+        <input type="range" id="nodeSpacing" min="40" max="300" value="120">
+        <div class="control-value" id="nodeSpacingVal">120</div>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Edge–Node</div>
+        <input type="range" id="edgeNodeSpacing" min="20" max="200" value="80">
+        <div class="control-value" id="edgeNodeSpacingVal">80</div>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Edge–Edge</div>
+        <input type="range" id="edgeEdgeSpacing" min="10" max="120" value="40">
+        <div class="control-value" id="edgeEdgeSpacingVal">40</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Visual</div>
+      <div class="edge-style-row">
+        <div class="edge-style-label">Edge Opacity</div>
+        <div class="edge-opacity-row">
+          <input type="range" id="edgeOpacity" min="5" max="100" value="45" style="width:120px">
+          <div class="control-value" id="edgeOpacityVal">45%</div>
+        </div>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Edge Width</div>
+        <input type="range" id="edgeWidth" min="1" max="5" value="15" step="1">
+        <div class="control-value" id="edgeWidthVal">1.5</div>
+      </div>
+      <div class="control-row">
+        <div class="control-label">Edge Color</div>
+        <select id="edgeColor">
+          <option value="150,150,160">Gray</option>
+          <option value="79,142,247">Blue</option>
+          <option value="78,201,176">Teal</option>
+          <option value="199,144,234">Purple</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <button class="import-btn" onclick="openImportModal()">⬆ Load Graph JSON</button>
+  <button class="apply-btn" onclick="runLayout()">▶ Apply Layout</button>
+  <button class="export-btn" onclick="openExportModal()">↓ Export Config</button>
+</div>
+
+<div class="canvas-area" id="canvas">
+  <svg id="svg">
+    <defs>
+      <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L6,3 z" fill="rgba(150,150,160,0.5)"/>
+      </marker>
+    </defs>
+    <g id="graph-root"></g>
+  </svg>
+  <div class="loading" id="loading" style="display:none">
+    <div class="spinner"></div> Computing layout…
+  </div>
+  <div class="status-bar" id="status">Ready</div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Load Graph JSON</h2>
+      <button class="modal-close" onclick="closeImportModal()">×</button>
+    </div>
+    <div class="modal-content">
+      <div class="format-hint">
+        Paste your graph JSON here. Supports nodes in "children" array and edges with "sources" and "targets" arrays. Existing layoutOptions will be merged with the UI controls.
+      </div>
+      <textarea 
+        id="importTextarea" 
+        class="import-textarea" 
+        placeholder='Paste JSON like:
+{
+  "id": "root",
+  "layoutOptions": { ... },
+  "children": [ ... ],
+  "edges": [ ... ]
+}'></textarea>
+      <div class="error-message" id="importError"></div>
+      <div class="import-actions">
+        <button class="btn-cancel" onclick="closeImportModal()">Cancel</button>
+        <button class="btn-load" onclick="loadGraphJSON()">Load Graph</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Export Configuration</h2>
+      <button class="modal-close" onclick="closeExportModal()">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchTab('json')">JSON</button>
+      <button class="modal-tab" onclick="switchTab('javascript')">JavaScript</button>
+      <button class="modal-tab" onclick="switchTab('typescript')">TypeScript</button>
+    </div>
+    <div class="modal-content">
+      <!-- JSON Tab -->
+      <div class="tab-content active" id="json-tab">
+        <div class="format-hint">
+          Pure JSON format — ready to use with ELK's layout() method
+        </div>
+        <div style="position: relative;">
+          <button class="copy-btn" onclick="copyToClipboard('json-code', this)">Copy</button>
+          <div class="code-block" id="json-code"></div>
+        </div>
+      </div>
+
+      <!-- JavaScript Tab -->
+      <div class="tab-content" id="javascript-tab">
+        <div class="format-hint">
+          JavaScript object — import and use in your app
+        </div>
+        <div style="position: relative;">
+          <button class="copy-btn" onclick="copyToClipboard('js-code', this)">Copy</button>
+          <div class="code-block" id="js-code"></div>
+        </div>
+      </div>
+
+      <!-- TypeScript Tab -->
+      <div class="tab-content" id="typescript-tab">
+        <div class="format-hint">
+          TypeScript with ELK types — fully typed configuration
+        </div>
+        <div style="position: relative;">
+          <button class="copy-btn" onclick="copyToClipboard('ts-code', this)">Copy</button>
+          <div class="code-block" id="ts-code"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Current loaded graph ──────────────────────────────────────────────────────
+let CURRENT_GRAPH = null;
+let RAW_IMPORTED_DATA = null;
+
+// ── Graph data — complex multi-pipeline topology ──────────────────────────────
+const BL = '#2d5a8e', BLT = '#a8d4ff', GR = '#1a3a1a', GRT = '#4ec9b0';
+const PU = '#3a1a5a', PUT = '#c792ea', AM = '#4a3000', AMT = '#ffd580';
+
+const DEFAULT_GRAPH = {
+  nodes: [
+    // ── Inputs ──
+    { id: 'conv_input',      label: 'conversation_input',       type: 'Input',
+      pills: [{name:'T', val:'ConversationHistory', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+    { id: 'user_profile',    label: 'user_profile',             type: 'Input',
+      pills: [{name:'T', val:'UserProfile', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+    { id: 'query_input',     label: 'query_input',              type: 'Input',
+      pills: [{name:'T', val:'str', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+    { id: 'context_input',   label: 'context_input',            type: 'Input',
+      pills: [{name:'T', val:'any', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+
+    // ── Layer 1: Extraction & parsing ──
+    { id: 'extract_intent',  label: 'extract_intent',           type: 'IntentClassifier',
+      pills: [
+        {name:'InType',  val:'ConversationHistory', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'Intent',              nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'parse_profile',   label: 'parse_user_profile',       type: 'JmesPathExtractor',
+      pills: [
+        {name:'InType',  val:'UserProfile', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'ProfileData', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'embed_query',     label: 'embed_query',              type: 'TextEmbedder',
+      pills: [
+        {name:'Model',   val:'text-embed-3', nameColor:PU, nameText:PUT, valColor:GR, valText:GRT},
+        {name:'Dims',    val:'1536',         nameColor:PU, nameText:PUT, valColor:AM, valText:AMT},
+      ]},
+    { id: 'tokenize',        label: 'tokenize_context',         type: 'Tokenizer',
+      pills: [
+        {name:'InType',  val:'any', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'TokenStream', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+
+    // ── Layer 2: Checks & filters ──
+    { id: 'intent_check',    label: 'is_search_intent',         type: 'All',
+      pills: [{name:'StreamType', val:'Intent', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+    { id: 'safety_check',    label: 'safety_filter',            type: 'ContentModerator',
+      pills: [
+        {name:'Threshold', val:'0.85',   nameColor:AM, nameText:AMT, valColor:GR, valText:GRT},
+        {name:'OutType',   val:'boolean', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'profile_gate',    label: 'profile_feature_gate',     type: 'FeatureGate',
+      pills: [{name:'Feature', val:'premium_search', nameColor:PU, nameText:PUT, valColor:AM, valText:AMT}] },
+    { id: 'token_len_check', label: 'check_token_length',       type: 'JmesPathConverter',
+      pills: [
+        {name:'InType',  val:'TokenStream', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'boolean',     nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+
+    // ── Layer 3: Retrieval ──
+    { id: 'vector_search',   label: 'vector_store_search',      type: 'VectorRetriever',
+      pills: [
+        {name:'TopK',    val:'20',          nameColor:AM, nameText:AMT, valColor:GR, valText:GRT},
+        {name:'Metric',  val:'cosine',      nameColor:PU, nameText:PUT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'DocList',     nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'keyword_search',  label: 'keyword_bm25_search',      type: 'BM25Retriever',
+      pills: [
+        {name:'TopK',    val:'20',      nameColor:AM, nameText:AMT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'DocList', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'cache_lookup',    label: 'semantic_cache_lookup',    type: 'SemanticCache',
+      pills: [
+        {name:'TTL',     val:'3600s',   nameColor:AM, nameText:AMT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'CacheHit',nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+
+    // ── Layer 4: Merge & rerank ──
+    { id: 'merge_results',   label: 'merge_retrieval_results',  type: 'StreamMerger',
+      pills: [{name:'Strategy', val:'rrf', nameColor:PU, nameText:PUT, valColor:GR, valText:GRT}] },
+    { id: 'reranker',        label: 'cross_encoder_reranker',   type: 'CrossEncoderReranker',
+      pills: [
+        {name:'Model',   val:'ce-msmarco-v3', nameColor:PU, nameText:PUT, valColor:GR, valText:GRT},
+        {name:'TopK',    val:'5',             nameColor:AM, nameText:AMT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'RankedDocs',    nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'cache_bypass',    label: 'cache_bypass_gate',        type: 'ConditionalRouter',
+      pills: [{name:'OutType', val:'RankedDocs', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+
+    // ── Layer 5: Generation ──
+    { id: 'build_prompt',    label: 'build_rag_prompt',         type: 'PromptBuilder',
+      pills: [
+        {name:'Template', val:'rag_v2',    nameColor:PU, nameText:PUT, valColor:GR, valText:GRT},
+        {name:'OutType',  val:'str',       nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'llm_generate',    label: 'llm_generate_answer',      type: 'Conversational',
+      pills: [
+        {name:'Model',    val:'claude-sonnet-4', nameColor:PU, nameText:PUT, valColor:GR, valText:GRT},
+        {name:'MaxTok',   val:'2048',            nameColor:AM, nameText:AMT, valColor:GR, valText:GRT},
+        {name:'Stream',   val:'true',            nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'fallback_gen',    label: 'fallback_llm',             type: 'Conversational',
+      pills: [
+        {name:'Model',   val:'claude-haiku-4', nameColor:PU, nameText:PUT, valColor:GR, valText:GRT},
+        {name:'OutType', val:'str',            nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+
+    // ── Layer 6: Post-processing ──
+    { id: 'citation_inject', label: 'inject_citations',         type: 'CitationFormatter',
+      pills: [{name:'Format', val:'markdown', nameColor:PU, nameText:PUT, valColor:GR, valText:GRT}] },
+    { id: 'safety_out',      label: 'output_safety_check',      type: 'ContentModerator',
+      pills: [
+        {name:'Threshold', val:'0.9',   nameColor:AM, nameText:AMT, valColor:GR, valText:GRT},
+        {name:'OutType',   val:'boolean', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT},
+      ]},
+    { id: 'response_merge',  label: 'merge_response_streams',   type: 'StreamMerger',
+      pills: [{name:'OutType', val:'str', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+
+    // ── Outputs ──
+    { id: 'answer_out',      label: 'answer_output',            type: 'Output',
+      pills: [{name:'T', val:'str', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+    { id: 'safety_alert',    label: 'safety_alert',             type: 'Output',
+      pills: [{name:'T', val:'any', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+    { id: 'audit_log',       label: 'audit_log_output',         type: 'Output',
+      pills: [{name:'T', val:'AuditRecord', nameColor:BL, nameText:BLT, valColor:GR, valText:GRT}] },
+  ],
+  edges: [
+    // inputs → layer1
+    { id: 'e01', source: 'conv_input',    target: 'extract_intent' },
+    { id: 'e02', source: 'conv_input',    target: 'safety_check' },
+    { id: 'e03', source: 'user_profile',  target: 'parse_profile' },
+    { id: 'e04', source: 'query_input',   target: 'embed_query' },
+    { id: 'e05', source: 'query_input',   target: 'keyword_search' },
+    { id: 'e06', source: 'context_input', target: 'tokenize' },
+
+    // layer1 → layer2
+    { id: 'e07', source: 'extract_intent', target: 'intent_check' },
+    { id: 'e08', source: 'extract_intent', target: 'audit_log' },
+    { id: 'e09', source: 'parse_profile',  target: 'profile_gate' },
+    { id: 'e10', source: 'embed_query',    target: 'vector_search' },
+    { id: 'e11', source: 'embed_query',    target: 'cache_lookup' },
+    { id: 'e12', source: 'tokenize',       target: 'token_len_check' },
+
+    // layer2 → layer3
+    { id: 'e13', source: 'intent_check',    target: 'vector_search' },
+    { id: 'e14', source: 'intent_check',    target: 'keyword_search' },
+    { id: 'e15', source: 'safety_check',    target: 'safety_alert' },
+    { id: 'e16', source: 'safety_check',    target: 'build_prompt' },
+    { id: 'e17', source: 'profile_gate',    target: 'vector_search' },
+    { id: 'e18', source: 'token_len_check', target: 'merge_results' },
+
+    // layer3 → layer4
+    { id: 'e19', source: 'vector_search',  target: 'merge_results' },
+    { id: 'e20', source: 'keyword_search', target: 'merge_results' },
+    { id: 'e21', source: 'cache_lookup',   target: 'cache_bypass' },
+
+    // layer4 → layer5
+    { id: 'e22', source: 'merge_results', target: 'reranker' },
+    { id: 'e23', source: 'reranker',      target: 'cache_bypass' },
+    { id: 'e24', source: 'cache_bypass',  target: 'build_prompt' },
+    { id: 'e25', source: 'cache_bypass',  target: 'fallback_gen' },
+
+    // layer5 → layer6
+    { id: 'e26', source: 'build_prompt',  target: 'llm_generate' },
+    { id: 'e27', source: 'llm_generate',  target: 'citation_inject' },
+    { id: 'e28', source: 'llm_generate',  target: 'safety_out' },
+    { id: 'e29', source: 'fallback_gen',  target: 'response_merge' },
+    { id: 'e30', source: 'citation_inject', target: 'response_merge' },
+
+    // layer6 → outputs
+    { id: 'e31', source: 'safety_out',     target: 'safety_alert' },
+    { id: 'e32', source: 'response_merge', target: 'answer_out' },
+    { id: 'e33', source: 'reranker',       target: 'audit_log' },
+    { id: 'e34', source: 'llm_generate',   target: 'audit_log' },
+  ]
+};
+
+// Initialize with default graph
+CURRENT_GRAPH = DEFAULT_GRAPH;
+
+// ── ELK instance ─────────────────────────────────────────────────────────────
+const elk = new ELK();
+
+// ── Node size estimation ─────────────────────────────────────────────────────
+function estimateNodeSize(node) {
+  const titleWidth = node.label.length * 7.5 + 20;
+  const typeWidth = node.type.length * 6.5 + 20;
+  const pillWidth = node.pills.reduce((max, p) => {
+    return Math.max(max, (p.name.length + p.val.length) * 6 + 30);
+  }, 0);
+  const w = Math.max(120, titleWidth, typeWidth, pillWidth);
+  const h = 32 + (node.type ? 14 : 0) + (node.pills.length * 18) + (node.pills.length > 0 ? 8 : 0);
+  return { w: Math.min(w, 260), h };
+}
+
+// ── Slider live values ────────────────────────────────────────────────────────
+function bindSlider(id, displayId, transform) {
+  const el = document.getElementById(id);
+  const disp = document.getElementById(displayId);
+  el.addEventListener('input', () => {
+    disp.textContent = transform ? transform(el.value) : el.value;
+    applyEdgeStyle();
+  });
+}
+
+bindSlider('layerSpacing', 'layerSpacingVal');
+bindSlider('nodeSpacing', 'nodeSpacingVal');
+bindSlider('edgeNodeSpacing', 'edgeNodeSpacingVal');
+bindSlider('edgeEdgeSpacing', 'edgeEdgeSpacingVal');
+bindSlider('edgeOpacity', 'edgeOpacityVal', v => v + '%');
+bindSlider('edgeWidth', 'edgeWidthVal', v => (v / 10).toFixed(1));
+
+document.getElementById('edgeColor').addEventListener('change', applyEdgeStyle);
+
+function applyEdgeStyle() {
+  const opacity = document.getElementById('edgeOpacity').value / 100;
+  const width = document.getElementById('edgeWidth').value / 10;
+  const color = document.getElementById('edgeColor').value;
+  document.querySelectorAll('.edge-path').forEach(p => {
+    p.style.stroke = `rgba(${color},${opacity})`;
+    p.style.strokeWidth = width;
+  });
+  // Update arrow marker
+  const arrow = document.querySelector('#arrow path');
+  if (arrow) arrow.setAttribute('fill', `rgba(${color},${opacity})`);
+}
+
+// ── Get current ELK options ───────────────────────────────────────────────────
+function getCurrentElkOptions() {
+  return {
+    'elk.algorithm': 'layered',
+    'elk.direction': document.getElementById('direction').value,
+    'elk.edgeRouting': document.getElementById('edgeRouting').value,
+    'elk.spacing.nodeNode': document.getElementById('nodeSpacing').value,
+    'elk.spacing.edgeNode': document.getElementById('edgeNodeSpacing').value,
+    'elk.spacing.edgeEdge': document.getElementById('edgeEdgeSpacing').value,
+    'elk.layered.spacing.nodeNodeBetweenLayers': document.getElementById('layerSpacing').value,
+    'elk.layered.nodePlacement.strategy': document.getElementById('nodePlacement').value,
+    'elk.layered.nodePlacement.bk.fixedAlignment': document.getElementById('bkAlign').value,
+    'elk.layered.crossingMinimization.strategy': document.getElementById('crossingMin').value,
+    'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
+    'elk.layered.thoroughness': '10',
+    'elk.portConstraints': 'FIXED_SIDE',
+    'elk.portAlignment.default': 'CENTER',
+    'elk.padding': '[top=30, left=30, bottom=30, right=30]',
+  };
+}
+
+// ── Import Modal ──────────────────────────────────────────────────────────────
+function openImportModal() {
+  const modal = document.getElementById('importModal');
+  modal.classList.add('active');
+  document.getElementById('importError').classList.remove('visible');
+}
+
+function closeImportModal() {
+  const modal = document.getElementById('importModal');
+  modal.classList.remove('active');
+  document.getElementById('importTextarea').value = '';
+  document.getElementById('importError').classList.remove('visible');
+}
+
+function showImportError(message) {
+  const errorEl = document.getElementById('importError');
+  errorEl.textContent = message;
+  errorEl.classList.add('visible');
+}
+
+function convertImportedGraphToInternalFormat(data) {
+  // Extract nodes from "children" array
+  const nodes = (data.children || []).map(child => {
+    const node = {
+      id: child.id,
+      label: child.id,
+      type: child.type || '',
+      pills: []
+    };
+
+    // Try to extract useful info for display
+    if (child.data && child.data.component) {
+      const comp = child.data.component;
+      node.label = comp.id || child.id;
+      node.type = comp.type || child.type || '';
+
+      // Extract type params as pills
+      if (comp.type_params) {
+        Object.entries(comp.type_params).forEach(([key, value]) => {
+          node.pills.push({
+            name: key,
+            val: String(value),
+            nameColor: BL,
+            nameText: BLT,
+            valColor: GR,
+            valText: GRT
+          });
+        });
+      }
+    }
+
+    return node;
+  });
+
+  // Convert edges - handle both formats
+  const edges = (data.edges || []).map(edge => {
+    // If edge has sources/targets arrays (like your format)
+    if (edge.sources && edge.targets) {
+      // Create one edge per source-target combination
+      // For simplicity, we'll just use the first source and first target
+      return {
+        id: edge.id,
+        source: edge.sources[0],
+        target: edge.targets[0]
+      };
+    }
+    // If edge has source/target directly
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target
+    };
+  }).filter(e => e.source && e.target);
+
+  return { nodes, edges };
+}
+
+function loadGraphJSON() {
+  const textarea = document.getElementById('importTextarea');
+  const text = textarea.value.trim();
+
+  if (!text) {
+    showImportError('Please paste JSON data');
+    return;
+  }
+
+  try {
+    const data = JSON.parse(text);
+    
+    // Validate structure
+    if (!data.children || !Array.isArray(data.children)) {
+      showImportError('JSON must have a "children" array with nodes');
+      return;
+    }
+
+    if (!data.edges || !Array.isArray(data.edges)) {
+      showImportError('JSON must have an "edges" array');
+      return;
+    }
+
+    // Store raw data
+    RAW_IMPORTED_DATA = data;
+
+    // Convert to internal format
+    CURRENT_GRAPH = convertImportedGraphToInternalFormat(data);
+
+    // Merge layoutOptions from imported data with current UI
+    if (data.layoutOptions) {
+      applyLayoutOptionsToUI(data.layoutOptions);
+    }
+
+    closeImportModal();
+    
+    // Auto-run layout with new graph
+    runLayout();
+    
+    const status = document.getElementById('status');
+    status.textContent = `Loaded graph: ${CURRENT_GRAPH.nodes.length} nodes, ${CURRENT_GRAPH.edges.length} edges`;
+
+  } catch (err) {
+    showImportError('Invalid JSON: ' + err.message);
+    console.error('Import error:', err);
+  }
+}
+
+function applyLayoutOptionsToUI(layoutOptions) {
+  // Map layoutOptions to UI controls
+  const mapping = {
+    'elk.direction': 'direction',
+    'elk.edgeRouting': 'edgeRouting',
+    'elk.spacing.nodeNode': 'nodeSpacing',
+    'elk.spacing.edgeNode': 'edgeNodeSpacing',
+    'elk.spacing.edgeEdge': 'edgeEdgeSpacing',
+    'elk.layered.spacing.nodeNodeBetweenLayers': 'layerSpacing',
+    'elk.layered.nodePlacement.strategy': 'nodePlacement',
+    'elk.layered.nodePlacement.bk.fixedAlignment': 'bkAlign',
+    'elk.layered.crossingMinimization.strategy': 'crossingMin',
+  };
+
+  Object.entries(mapping).forEach(([optionKey, controlId]) => {
+    if (layoutOptions[optionKey]) {
+      const el = document.getElementById(controlId);
+      if (el) {
+        el.value = layoutOptions[optionKey];
+        
+        // Update display value for range inputs
+        const displayId = controlId + 'Val';
+        const displayEl = document.getElementById(displayId);
+        if (displayEl) {
+          let displayValue = layoutOptions[optionKey];
+          if (controlId === 'edgeOpacity') {
+            displayValue += '%';
+          } else if (controlId === 'edgeWidth') {
+            displayValue = (displayValue / 10).toFixed(1);
+          }
+          displayEl.textContent = displayValue;
+        }
+      }
+    }
+  });
+}
+
+// ── Main layout ───────────────────────────────────────────────────────────────
+async function runLayout() {
+  const loading = document.getElementById('loading');
+  const status = document.getElementById('status');
+  loading.style.display = 'flex';
+  status.textContent = 'Computing…';
+
+  const options = getCurrentElkOptions();
+
+  const graph = {
+    id: 'root',
+    layoutOptions: options,
+    children: CURRENT_GRAPH.nodes.map(n => {
+      const { w, h } = estimateNodeSize(n);
+      return { id: n.id, width: w, height: h };
+    }),
+    edges: CURRENT_GRAPH.edges.map(e => ({
+      id: e.id, sources: [e.source], targets: [e.target]
+    }))
+  };
+
+  try {
+    const result = await elk.layout(graph);
+    renderGraph(result);
+    status.textContent = `Layout done · ${CURRENT_GRAPH.nodes.length} nodes · ${CURRENT_GRAPH.edges.length} edges · ${options['elk.edgeRouting']}`;
+  } catch(err) {
+    status.textContent = 'Layout error: ' + err.message;
+    console.error(err);
+  } finally {
+    loading.style.display = 'none';
+  }
+}
+
+// ── SVG rendering ─────────────────────────────────────────────────────────────
+function renderGraph(layoutResult) {
+  const root = document.getElementById('graph-root');
+  root.innerHTML = '';
+
+  const nodeMap = {};
+  CURRENT_GRAPH.nodes.forEach(n => nodeMap[n.id] = n);
+
+  const laid = {};
+  (layoutResult.children || []).forEach(n => laid[n.id] = n);
+
+  const opacity = document.getElementById('edgeOpacity').value / 100;
+  const width = document.getElementById('edgeWidth').value / 10;
+  const color = document.getElementById('edgeColor').value;
+  const edgeRouting = document.getElementById('edgeRouting').value;
+
+  // Draw edges first (behind nodes)
+  const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  edgeGroup.setAttribute('class', 'edges');
+
+  (layoutResult.edges || []).forEach(edge => {
+    if (!edge.sections || !edge.sections[0]) return;
+    const sec = edge.sections[0];
+    const pts = [sec.startPoint, ...(sec.bendPoints || []), sec.endPoint];
+
+    let d;
+    if (edgeRouting === 'SPLINES' && pts.length >= 2) {
+      d = `M ${pts[0].x} ${pts[0].y}`;
+      if (pts.length === 2) {
+        const mx = (pts[0].x + pts[1].x) / 2;
+        d += ` C ${mx} ${pts[0].y}, ${mx} ${pts[1].y}, ${pts[1].x} ${pts[1].y}`;
+      } else {
+        for (let i = 1; i < pts.length - 1; i++) {
+          const cp = pts[i];
+          const next = pts[i + 1] || cp;
+          d += ` Q ${cp.x} ${cp.y}, ${(cp.x + next.x)/2} ${(cp.y + next.y)/2}`;
+        }
+        const last = pts[pts.length - 1];
+        d += ` L ${last.x} ${last.y}`;
+      }
+    } else {
+      d = `M ${pts[0].x} ${pts[0].y} ` + pts.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+    }
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d);
+    path.setAttribute('class', 'edge-path');
+    path.setAttribute('marker-end', 'url(#arrow)');
+    path.style.stroke = `rgba(${color},${opacity})`;
+    path.style.strokeWidth = width;
+    edgeGroup.appendChild(path);
+  });
+
+  root.appendChild(edgeGroup);
+
+  // Draw nodes on top
+  const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  nodeGroup.setAttribute('class', 'nodes');
+
+  CURRENT_GRAPH.nodes.forEach(nodeDef => {
+    const ln = laid[nodeDef.id];
+    if (!ln) return;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'node-group');
+    g.setAttribute('transform', `translate(${ln.x}, ${ln.y})`);
+
+    // Background rect
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('width', ln.width);
+    rect.setAttribute('height', ln.height);
+    rect.setAttribute('rx', 7);
+    rect.setAttribute('ry', 7);
+    rect.setAttribute('fill', '#1a1a24');
+    rect.setAttribute('stroke', 'rgba(255,255,255,0.1)');
+    rect.setAttribute('stroke-width', '1');
+    rect.style.filter = 'drop-shadow(0 2px 10px rgba(0,0,0,0.6))';
+    g.appendChild(rect);
+
+    let y = 10;
+
+    // Title
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    title.setAttribute('x', 10);
+    title.setAttribute('y', y + 11);
+    title.setAttribute('class', 'node-title');
+    title.setAttribute('font-family', 'Syne, sans-serif');
+    title.setAttribute('font-size', '11');
+    title.setAttribute('font-weight', '700');
+    title.setAttribute('fill', '#e0e0e0');
+    title.textContent = nodeDef.label;
+    g.appendChild(title);
+    y += 18;
+
+    // Type
+    if (nodeDef.type) {
+      const type = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      type.setAttribute('x', 10);
+      type.setAttribute('y', y + 9);
+      type.setAttribute('font-family', 'JetBrains Mono, monospace');
+      type.setAttribute('font-size', '9');
+      type.setAttribute('fill', '#555870');
+      type.textContent = nodeDef.type;
+      g.appendChild(type);
+      y += 14;
+    }
+
+    // Pills
+    nodeDef.pills.forEach(pill => {
+      y += 4;
+      const nameW = pill.name.length * 5.5 + 12;
+      const valW = pill.val.length * 5.5 + 12;
+      const pillH = 14;
+      const px = 10;
+
+      // Name half
+      const nameRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      nameRect.setAttribute('x', px);
+      nameRect.setAttribute('y', y);
+      nameRect.setAttribute('width', nameW);
+      nameRect.setAttribute('height', pillH);
+      nameRect.setAttribute('rx', 99);
+      nameRect.setAttribute('ry', 99);
+      nameRect.setAttribute('fill', pill.nameColor);
+      g.appendChild(nameRect);
+
+      const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      nameText.setAttribute('x', px + nameW / 2);
+      nameText.setAttribute('y', y + pillH / 2 + 1);
+      nameText.setAttribute('text-anchor', 'middle');
+      nameText.setAttribute('dominant-baseline', 'middle');
+      nameText.setAttribute('font-family', 'JetBrains Mono, monospace');
+      nameText.setAttribute('font-size', '8');
+      nameText.setAttribute('font-weight', '600');
+      nameText.setAttribute('fill', pill.nameText);
+      nameText.textContent = pill.name;
+      g.appendChild(nameText);
+
+      // Divider
+      const div = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      div.setAttribute('x', px + nameW);
+      div.setAttribute('y', y);
+      div.setAttribute('width', 1);
+      div.setAttribute('height', pillH);
+      div.setAttribute('fill', 'rgba(255,255,255,0.12)');
+      g.appendChild(div);
+
+      // Value half
+      const valRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      valRect.setAttribute('x', px + nameW + 1);
+      valRect.setAttribute('y', y);
+      valRect.setAttribute('width', valW);
+      valRect.setAttribute('height', pillH);
+      valRect.setAttribute('rx', 99);
+      valRect.setAttribute('ry', 99);
+      valRect.setAttribute('fill', pill.valColor);
+      g.appendChild(valRect);
+
+      const valText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      valText.setAttribute('x', px + nameW + 1 + valW / 2);
+      valText.setAttribute('y', y + pillH / 2 + 1);
+      valText.setAttribute('text-anchor', 'middle');
+      valText.setAttribute('dominant-baseline', 'middle');
+      valText.setAttribute('font-family', 'JetBrains Mono, monospace');
+      valText.setAttribute('font-size', '8');
+      valText.setAttribute('fill', pill.valText);
+      valText.textContent = pill.val;
+      g.appendChild(valText);
+
+      y += pillH + 2;
+    });
+
+    nodeGroup.appendChild(g);
+  });
+
+  root.appendChild(nodeGroup);
+
+  // Fit to view
+  fitToView(layoutResult);
+}
+
+function fitToView(layoutResult) {
+  const svg = document.getElementById('svg');
+  const canvas = document.getElementById('canvas');
+  const W = canvas.clientWidth;
+  const H = canvas.clientHeight;
+
+  const gw = layoutResult.width || 800;
+  const gh = layoutResult.height || 600;
+  const pad = 40;
+
+  const scale = Math.min((W - pad*2) / gw, (H - pad*2) / gh, 1.5);
+  const tx = (W - gw * scale) / 2;
+  const ty = (H - gh * scale) / 2;
+
+  document.getElementById('graph-root').setAttribute(
+    'transform', `translate(${tx}, ${ty}) scale(${scale})`
+  );
+}
+
+// ── Export Modal ──────────────────────────────────────────────────────────────
+function openExportModal() {
+  const modal = document.getElementById('exportModal');
+  modal.classList.add('active');
+  generateExportCode();
+}
+
+function closeExportModal() {
+  const modal = document.getElementById('exportModal');
+  modal.classList.remove('active');
+}
+
+function switchTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.modal-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  event.target.classList.add('active');
+
+  // Update tab content
+  document.querySelectorAll('.tab-content').forEach(content => {
+    content.classList.remove('active');
+  });
+  document.getElementById(tabName + '-tab').classList.add('active');
+}
+
+function generateExportCode() {
+  const options = getCurrentElkOptions();
+
+  // JSON format
+  const jsonCode = JSON.stringify(options, null, 2);
+  document.getElementById('json-code').textContent = jsonCode;
+
+  // JavaScript format
+  const jsCode = `// ELK Layout Configuration
+// Generated by ELK Config Generator
+
+const elkOptions = ${JSON.stringify(options, null, 2)};
+
+// Usage example:
+// const elk = new ELK();
+// const graph = {
+//   id: 'root',
+//   layoutOptions: elkOptions,
+//   children: [...],
+//   edges: [...]
+// };
+// const layout = await elk.layout(graph);`;
+  document.getElementById('js-code').textContent = jsCode;
+
+  // TypeScript format
+  const tsCode = `// ELK Layout Configuration
+// Generated by ELK Config Generator
+
+import type { LayoutOptions } from 'elkjs';
+
+const elkOptions: LayoutOptions = ${JSON.stringify(options, null, 2)};
+
+// Usage example:
+// import ELK from 'elkjs/lib/elk.bundled.js';
+// const elk = new ELK();
+// 
+// const graph = {
+//   id: 'root',
+//   layoutOptions: elkOptions,
+//   children: [...],
+//   edges: [...]
+// };
+// 
+// const layout = await elk.layout(graph);
+
+export default elkOptions;`;
+  document.getElementById('ts-code').textContent = tsCode;
+}
+
+async function copyToClipboard(elementId, button) {
+  const code = document.getElementById(elementId).textContent;
+  
+  try {
+    await navigator.clipboard.writeText(code);
+    button.textContent = 'Copied!';
+    button.classList.add('copied');
+    
+    setTimeout(() => {
+      button.textContent = 'Copy';
+      button.classList.remove('copied');
+    }, 2000);
+  } catch (err) {
+    console.error('Failed to copy:', err);
+    button.textContent = 'Error';
+    setTimeout(() => {
+      button.textContent = 'Copy';
+    }, 2000);
+  }
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeExportModal();
+    closeImportModal();
+  }
+});
+
+// Close modal on overlay click
+document.getElementById('exportModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) {
+    closeExportModal();
+  }
+});
+
+document.getElementById('importModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) {
+    closeImportModal();
+  }
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+runLayout();
+</script>
+</body>
+</html>
